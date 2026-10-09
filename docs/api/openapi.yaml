@@ -1,0 +1,87 @@
+openapi: 3.0.3
+info:
+  title: API de Detecção de Fraudes
+  description: Microsserviço de avaliação de risco em tempo real para e-commerces.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api/v1
+paths:
+  /transactions/evaluate:
+    post:
+      summary: Avalia o risco de uma transação de checkout.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '200':
+          description: Avaliação concluída com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationResponse'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    TransactionRequest:
+      type: object
+      required:
+        - transaction_id
+        - amount
+        - customer_name
+        - customer_cpf
+        - customer_ip
+        - delivery_state
+        - started_checkout_at
+        - submitted_checkout_at
+      properties:
+        transaction_id:
+          type: string
+        amount:
+          type: number
+        customer_name:
+          type: string
+        customer_cpf:
+          type: string
+        customer_ip:
+          type: string
+        delivery_state:
+          type: string
+        started_checkout_at:
+          type: string
+          format: date-time
+        submitted_checkout_at:
+          type: string
+          format: date-time
+        is_card_pasted:
+          type: boolean
+          default: false
+        card_bin:
+          type: string
+          description: Os 6 primeiros dígitos do cartão.
+        card_last_four:
+          type: string
+    EvaluationResponse:
+      type: object
+      properties:
+        transaction_id:
+          type: string
+        status:
+          type: string
+          enum: [Aprovado, Em Revisão, Bloqueado]
+        score:
+          type: number
+          description: Score de fraude de 0 a 100.
+        reasons:
+          type: array
+          items:
+            type: string
+          description: Justificativas para a pontuação (Explicabilidade LGPD).

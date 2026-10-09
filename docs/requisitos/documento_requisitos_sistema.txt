@@ -1,0 +1,134 @@
+Documento de Requisitos do Sistema
+Sistema: API de Detecção de Fraudes em E-commerce
+Versão 1.0
+
+Histórico de Alterações
+Data        | Versão | Descrição                      | Autor
+------------|--------|--------------------------------|-------------------------
+08/09/2026  | 1.0    | Criação do documento inicial   | Caio Leonel e Diego Juan
+
+================================================================================
+1. Introdução
+
+Este documento especifica os requisitos do sistema "API de Detecção de Fraudes", fornecendo aos projetistas e desenvolvedores as informações necessárias para as fases de análise, projeto e implementação, assim como para a realização dos testes e homologação do sistema.
+
+1.1. Visão geral do documento
+Além desta seção introdutória, as seções seguintes estão organizadas para apresentar a descrição geral, requisitos funcionais e não funcionais, arquitetura e detalhamento técnico do sistema.
+
+1.2. Convenções, termos e abreviações
+1.2.1. Identificação dos requisitos
+Os requisitos são identificados com um identificador único. Requisitos Funcionais iniciam com [RF001] e Requisitos Não Funcionais iniciam com [RNF001].
+1.2.2. Propriedades dos requisitos
+Foi adotada a prioridade: Essencial (imprescindível), Importante (necessário, mas o sistema roda sem) e Desejável (não compromete o básico).
+
+================================================================================
+2. Descrição geral do sistema
+
+2.1. Justificativas do Sistema
+Lojas virtuais enfrentam constantes ataques de fraudadores que utilizam dados financeiros roubados. Quando a compra fraudulenta é contestada pelo titular do cartão, o lojista arca com o prejuízo do estorno (chargeback) e a perda do produto físico. O sistema foi motivado pela necessidade de automatizar e agilizar a identificação dessas fraudes em tempo real.
+
+2.2. Descrição do Escopo
+O objetivo é desenvolver um microsserviço (API REST) que atue como intermediário no fluxo de checkout. O sistema receberá os dados da tentativa de compra e, com auxílio de Inteligência Artificial, retornará uma avaliação instantânea indicando se a transação deve ser aprovada, bloqueada ou enviada para revisão manual. O escopo abrange a API backend, a integração com IA e o banco de dados seguro, sem prever a construção de interfaces visuais (frontend) para o cliente final.
+
+================================================================================
+3. Requisitos funcionais
+
+3.1. [RF001] Receber e validar dados de transação.
+Prioridade: [x] Essencial  [ ] Importante  [ ] Desejável
+O sistema deve permitir o recebimento de um payload (dados) de compra e validar sua estrutura mínima.
+
+3.2. [RF002] Avaliar risco via Inteligência Artificial.
+Prioridade: [x] Essencial  [ ] Importante  [ ] Desejável
+O sistema deve repassar os dados para o modelo de IA e receber um score probabilístico de fraude.
+
+3.3. [RF003] Bloquear transações com alto risco.
+Prioridade: [x] Essencial  [ ] Importante  [ ] Desejável
+O sistema deve retornar status de "Bloqueado" para scores de risco iguais ou superiores a 85%.
+
+3.4. [RF004] Encaminhar transações para revisão manual.
+Prioridade: [x] Essencial  [ ] Importante  [ ] Desejável
+O sistema deve retornar status "Em Revisão" para scores entre 60% e 84%.
+
+================================================================================
+4. Requisitos não funcionais
+
+4.1. [RNF001] Autenticação via Token JWT.
+Prioridade: [x] Essencial  [ ] Importante  [ ] Desejável
+A API deve ser protegida exigindo um token JWT válido a cada requisição.
+
+4.2. [RNF002] Conformidade PCI-DSS (Não armazenar CVV).
+Prioridade: [x] Essencial  [ ] Importante  [ ] Desejável
+O sistema não deve armazenar o código de segurança (CVV) em nenhum banco de dados.
+
+4.3. [RNF003] Conformidade LGPD (Tokenization).
+Prioridade: [x] Essencial  [ ] Importante  [ ] Desejável
+Dados sensíveis (CPF, Nome) devem ser armazenados de forma irreversível ou com criptografia forte.
+
+4.4. [RNF004] Resiliência via Circuit Breaker.
+Prioridade: [ ] Essencial  [x] Importante  [ ] Desejável
+O sistema deve aprovar ou colocar em revisão temporária caso o serviço de IA demore mais de 2 segundos para responder, não travando o checkout.
+
+================================================================================
+5. Módulos do sistema
+
+O sistema é dividido basicamente em 3 módulos de software:
+1. Módulo de Recepção (API Gateway): Responsável por receber a requisição, validar o JWT e aplicar Rate Limiting.
+2. Módulo Core (Backend): Aplica as regras de negócio e decide o fluxo da transação.
+3. Módulo de IA (Motor de Decisão): Avalia o score baseado em geolocalização e velocidade de checkout.
+
+================================================================================
+6. Especificação de requisitos do sistema (Exemplo Genérico)
+
+[RF002] Avaliar risco via Inteligência Artificial
+Referência: RN02, RN03
+Sumário: Requisito principal onde o sistema solicita o nível de risco.
+Pré-condições: O token JWT deve estar válido e os dados da compra íntegros.
+Atores: API do Lojista (Sistema Cliente).
+Entradas: Valor da compra, IP do usuário, Endereço de entrega (*).
+Fluxo Normal:
+ 1. O sistema Core envia os dados para o Módulo de IA.
+ 2. A IA processa os dados históricos e geolocalização.
+ 3. A IA devolve um score de 0 a 100%.
+Fluxo Alternativo:
+ 1. IA demora a responder. (Passo 2)
+ 2. O sistema aciona o Circuit Breaker (RNF004) e devolve um status genérico para não travar a venda.
+Exceções:
+ 1. Falha de conexão com a IA: Gera erro interno no log, mas não impede o checkout do usuário.
+
+================================================================================
+7. Partes interessadas
+
+Nome          | Posição            | Responsabilidade               | Autoridade/Influência | Contatos
+--------------|--------------------|--------------------------------|-----------------------|-----------
+Lojista       | Cliente do Sistema | Consumir a API no checkout     | Alta                  | lojista@exemplo
+Equipe Alunos | Desenvolvedores    | Criar e documentar a API       | Alta                  | equipe@exemplo
+Professor(a)  | Avaliador          | Avaliar o trabalho acadêmico   | Alta                  | prof@exemplo
+
+================================================================================
+8. Glossário de Termos
+
+Termo             | Explicação
+------------------|----------------------------------------------------------------------
+API REST          | Interface de comunicação entre sistemas usando o protocolo HTTP.
+Chargeback        | Cancelamento de uma venda feita no cartão, gerando devolução do valor.
+Payload           | Conjunto de dados enviados na requisição HTTP (ex: dados da compra).
+JWT               | Padrão seguro para criação de tokens de autenticação.
+Circuit Breaker   | Padrão de software que evita que falhas em um serviço derrubem outros.
+
+================================================================================
+9. Cronograma Estimado (Genérico - Semestre Letivo)
+
+Fase         | Disciplina | Tarefa                       | Início     | Fim
+-------------|------------|------------------------------|------------|-----------
+Iniciação    | Requisitos | Identificar partes/requisitos| Mês 1      | Mês 1
+Elaboração   | Design     | Modelar arquitetura / BD     | Mês 2      | Mês 2
+Construção   | Ambiente   | Preparar infra e código base | Mês 3      | Mês 3
+Implement.   | Desenvolv. | Programar a API e a IA       | Mês 3      | Mês 4
+Testes       | Testes     | Testes da API (Postman)      | Mês 4      | Mês 4
+Transição    | Implantação| Apresentação final do projeto| Mês 5      | Mês 5
+
+================================================================================
+10. Referências
+
+- Documento de Definição de Projeto Inicial (Visão de Negócio).
+- Padrões de Segurança PCI-DSS e LGPD.

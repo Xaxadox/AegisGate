@@ -1,0 +1,43 @@
+# Ambientes Virtuais Python
+venv/
+.venv/
+env/
+ENV/
+
+# Arquivos de Configuracao e Segredos (Regra perfil_caio §2)
+.env
+*.env
+!.env.example
+
+# Caches do Python e Compilados
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Caches de Testes e Cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Bancos de Dados Locais e Arquivos Temporarios
+*.db
+*.sqlite
+*.sqlite3
+fraud_test.db
+test_pytest.db
+
+# Dados GeoIP (Download externo pesado)
+data/GeoLite2-City.mmdb
+
+# IDEs e Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos de Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini

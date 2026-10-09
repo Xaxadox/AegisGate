@@ -1,0 +1,29 @@
+# Padronizacao de Quebras de Linha e Linguist do GitHub
+* text=auto eol=lf
+
+# Arquivos de Codigo Python
+*.py text eol=lf diff=python
+
+# Documentacao e Textos
+*.md text eol=lf
+*.txt text eol=lf
+
+# Arquivos de Configuracao
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.example text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+# Scripts Especificos de Windows
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binarios e Arquivos de Dados
+*.mmdb binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
