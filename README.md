@@ -29,7 +29,7 @@ O **AegisGate** atua como um escudo e intermediário crítico entre o checkout d
 * **Resiliência:** [PyBreaker](https://github.com/danielfm/pybreaker) (Circuit Breaker Pattern)
 * **Segurança e Criptografia:** `cryptography` (Fernet/AES-256), `hmac` (SHA-256), `secrets` e `PyJWT`
 * **Inteligência Geográfica:** MaxMind GeoIP2 (`geoip2`) com consulta opcional e defensiva
-* **Testes Automatizados:** [Pytest](https://docs.pytest.org/) com 36 testes automatizados cobrindo 100% dos cenários críticos
+* **Testes Automatizados:** [Pytest](https://docs.pytest.org/) com 43 testes automatizados cobrindo 100% dos cenários críticos
 
 ---
 
@@ -73,9 +73,10 @@ Projeto/
 │   │   └── security.py             # JWT Service e autenticação em tempo constante
 │   ├── models/                     # Entidades ORM (domains) e DTOs Pydantic V2 (schemas)
 │   └── services/                   # Regras de negócio (TransactionService, FraudAI, Audit)
-├── tests/                          # Suíte de testes automatizados com pytest (36 testes)
+├── tests/                          # Suíte de testes automatizados com pytest (43 testes)
 │   ├── test_auth.py                # Testes de autenticação de lojistas parceiros
 │   ├── test_config.py              # Testes de configurações e invariantes de segurança
+│   ├── test_exceptions.py          # Testes da hierarquia semântica de exceções DDD
 │   ├── test_fraud_api.py           # Testes de fluxos E2E, antifraude e Circuit Breaker
 │   ├── test_rate_limiter.py        # Testes de fail-open e limites de taxa
 │   └── test_schemas.py             # Testes de borda e validações Pydantic V2
@@ -132,9 +133,10 @@ A suíte de testes utiliza um banco SQLite em memória isolado para garantir que
 pytest -v
 ```
 
-A suíte abrange 36 testes automatizados organizados em 5 módulos coesos:
+A suíte abrange 43 testes automatizados organizados em 6 módulos coesos:
 * `tests/test_auth.py`: Autenticação e bloqueio de lojistas não autorizados.
 * `tests/test_config.py`: Validação de invariantes de segurança e URLs de banco.
+* `tests/test_exceptions.py`: Hierarquia semântica de exceções DDD (Conflict, Auth, Validation, Infra).
 * `tests/test_schemas.py`: Validações de borda (datas retroativas, UFs brasileiras, IPv4/IPv6, CPF, cartões).
 * `tests/test_rate_limiter.py`: Política de resiliência fail-open e bloqueio HTTP 429.
 * `tests/test_fraud_api.py`: Caminhos felizes, regras comportamentais, Circuit Breaker, 409 Conflict, anonimização LGPD e auditoria em background.
