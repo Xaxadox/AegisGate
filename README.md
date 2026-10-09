@@ -112,10 +112,14 @@ Copie o arquivo de exemplo `.env.example` para `.env`:
 Copy-Item .env.example .env
 ```
 
-### 4. Subir a Infraestrutura (MySQL e Redis)
+### 4. Subir a Infraestrutura (MySQL e Redis - Opcional)
+
+Se desejar executar a infraestrutura idêntica à de produção:
 ```powershell
 docker compose up -d
 ```
+> **Nota:** Em desenvolvimento local, o uso do Docker é **opcional**. Por padrão (`ENVIRONMENT=development`), o sistema utiliza banco SQLite local (`fraud_test.db`) e possui resiliência com *fail-open* para o rate limiter caso o Redis não esteja ativo.
+
 
 ### 5. Iniciar a API
 ```powershell
