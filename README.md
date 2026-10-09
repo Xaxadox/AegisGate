@@ -151,3 +151,9 @@ A suíte abrange 43 testes automatizados organizados em 6 módulos coesos:
 * [Arquitetura C4 Model](docs/arquitetura/C4_Model.md)
 * [Especificação de Requisitos](docs/requisitos/documento_requisitos_sistema.txt)
 * [Registro de Planos e Decisões de Arquitetura](docs/historico/registro_planos_e_decisoes.md)
+
+---
+
+## Licença
+
+Este projeto é distribuído sob os termos da licença **MIT**. Consulte o arquivo [LICENSE](LICENSE) para obter os termos legais completos.
