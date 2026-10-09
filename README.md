@@ -90,8 +90,9 @@ Projeto/
 ## Como Executar Localmente
 
 ### 1. Pré-requisitos
-* Python 3.11 instalado
-* Docker e Docker Compose instalados
+* Python 3.11+ instalado
+* Git instalado
+* Docker e Docker Compose (opcional; necessário apenas caso deseje executar instâncias dedicadas de MySQL e Redis)
 
 ### 2. Configurar o Ambiente Virtual
 No terminal (PowerShell no Windows):
