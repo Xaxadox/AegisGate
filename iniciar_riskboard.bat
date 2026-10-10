@@ -11,49 +11,83 @@ echo.
 
 REM 1. Configurar .env se necessario
 if not exist ".env" (
-    echo [*] Criando .env a partir de .env.example...
+    echo [*] Criando arquivo .env a partir de .env.example...
     copy ".env.example" ".env" >nul
 )
 
 REM 2. Identificar executavel do Python
 set "PY_BIN="
 
+REM Opcao A: Python Portatil embutido (presente no .rar e no pendrive)
 if exist "python_portable\python.exe" (
     set "PY_BIN=python_portable\python.exe"
     echo [OK] Utilizando Python Portatil embutido.
     goto :executar
 )
 
+REM Opcao B: Ambiente virtual venv existente
 if exist "venv\Scripts\python.exe" (
     set "PY_BIN=venv\Scripts\python.exe"
-    echo [OK] Utilizando ambiente virtual venv.
+    echo [OK] Utilizando ambiente virtual venv existente.
     goto :executar
 )
 
+REM Opcao C: Clonado do GitHub - Criar venv e instalar dependencias automaticamente
+set "SYS_PY="
 where python >nul 2>&1
-if %errorlevel% equ 0 (
-    set "PY_BIN=python"
-    goto :executar
+if %errorlevel% equ 0 set "SYS_PY=python"
+if "%SYS_PY%"=="" (
+    where py >nul 2>&1
+    if %errorlevel% equ 0 set "SYS_PY=py"
 )
 
-where py >nul 2>&1
-if %errorlevel% equ 0 (
-    set "PY_BIN=py"
-    goto :executar
+if "%SYS_PY%"=="" (
+    echo [ERRO] Nenhum interpretador Python encontrado no computador!
+    echo.
+    echo Para executar este projeto clonado do GitHub:
+    echo 1. Instale o Python 3.10+ do site https://www.python.org (marque Add Python to PATH); OU
+    echo 2. Utilize o arquivo pre-empacotado AegisGate_Portatil.rar (que inclui Python portatil).
+    echo.
+    pause
+    exit /b 1
 )
 
-echo [ERRO] Nenhum interpretador Python encontrado!
-echo Mantenha a pasta python_portable junto ao projeto.
-pause
-exit /b 1
+echo [*] Configurando ambiente virtual venv isolado...
+%SYS_PY% -m venv venv
+if %errorlevel% neq 0 (
+    echo [ERRO] Falha ao criar ambiente virtual venv.
+    pause
+    exit /b 1
+)
+
+echo [*] Instalando dependencias do projeto via pip...
+if exist "vendor_packages" (
+    venv\Scripts\python.exe -m pip install --no-index --find-links=vendor_packages -r requirements.txt >nul 2>&1
+)
+venv\Scripts\python.exe -m pip install -r requirements.txt
+if %errorlevel% neq 0 (
+    echo [ERRO] Falha ao instalar dependencias do requirements.txt.
+    pause
+    exit /b 1
+)
+
+set "PY_BIN=venv\Scripts\python.exe"
+echo [OK] Ambiente virtual configurado com sucesso!
 
 :executar
 
-REM 3. Abrir o navegador automaticamente
+REM 3. Garantir que o modelo de IA esta treinado
+if not exist "src\ml\fraud_model.joblib" (
+    echo [*] Treinando modelo de Inteligencia Artificial RandomForest...
+    %PY_BIN% scripts\train_ml_model.py
+    echo [OK] Modelo treinado com sucesso!
+)
+
+REM 4. Abrir o navegador automaticamente
 echo [*] Abrindo o RiskBoard no navegador...
 start http://localhost:8000/dashboard
 
-REM 4. Iniciar o servidor Uvicorn em primeiro plano nesta mesma janela
+REM 5. Iniciar o servidor Uvicorn em primeiro plano nesta mesma janela
 echo [*] Iniciando o servidor Uvicorn em http://localhost:8000...
 echo.
 echo ============================================================
