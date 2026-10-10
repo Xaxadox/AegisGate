@@ -121,3 +121,29 @@ def simulate_checkout(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Falha ao executar simulação de checkout: {e}"
         )
+
+
+@router.post(
+    "/reset",
+    status_code=status.HTTP_200_OK,
+    summary="Zerar transações de teste e reiniciar métricas do dashboard"
+)
+def reset_test_data(db: Session = Depends(get_db)):
+    """
+    Remove todas as transações e registros de auditoria do banco de homologação/teste,
+    permitindo reiniciar o RiskBoard com métricas zeradas para novas simulações e apresentações.
+    """
+    try:
+        service = DashboardService(db)
+        deleted = service.reset_database()
+        return {
+            "status": "success",
+            "message": f"Banco de testes resetado com sucesso ({deleted} transações removidas).",
+            "deleted_count": deleted
+        }
+    except Exception as e:
+        logger.error("Erro ao resetar dados de teste: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Falha ao resetar banco de testes."
+        )

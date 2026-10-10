@@ -3,6 +3,7 @@ venv/
 .venv/
 env/
 ENV/
+vendor_packages/
 
 # Arquivos de Configuracao e Segredos (Regra perfil_caio §2)
 .env

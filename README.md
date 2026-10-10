@@ -140,14 +140,28 @@ erDiagram
 
 ---
 
+---
+
 ## Como Executar Localmente
 
-### 1. Pré-requisitos
-* Python 3.11+ instalado
+### Opção 1: Inicialização em 1-Clique (Recomendado para Avaliação e Demonstrações)
+
+Para facilitar a execução em computadores de laboratório, bancas acadêmicas ou ambientes sem conexão à internet:
+
+1. Dê um duplo clique no arquivo `iniciar_riskboard.bat` (ou execute `.\iniciar_riskboard.ps1` no PowerShell).
+2. O script detecta automaticamente a presença do interpretador Python, cria e valida o ambiente virtual isolado `venv`, instala todas as dependências locais pré-armazenadas em `vendor_packages/` (sem necessidade de baixar nada da internet), carrega o modelo de IA e inicia o servidor Uvicorn.
+3. O navegador padrão é aberto automaticamente em `http://localhost:8000/dashboard`.
+
+---
+
+### Opção 2: Configuração Manual Passo a Passo
+
+#### 1. Pré-requisitos
+* Python 3.10+ ou 3.11+ instalado
 * Git instalado
 * Docker e Docker Compose (opcional; necessário apenas caso deseje executar instâncias dedicadas de MySQL e Redis)
 
-### 2. Configurar o Ambiente Virtual
+#### 2. Configurar o Ambiente Virtual
 No terminal (PowerShell no Windows):
 ```powershell
 # Criação do ambiente virtual
@@ -156,17 +170,17 @@ python -m venv venv
 # Ativação do venv
 .\venv\Scripts\Activate.ps1
 
-# Instalação das dependências
+# Instalação das dependências (utiliza o cache offline local se presente ou baixa da rede)
 pip install -r requirements.txt
 ```
 
-### 3. Configurar as Variáveis de Ambiente
+#### 3. Configurar as Variáveis de Ambiente
 Copie o arquivo de exemplo `.env.example` para `.env`:
 ```powershell
 Copy-Item .env.example .env
 ```
 
-### 4. Subir a Infraestrutura (MySQL e Redis - Opcional)
+#### 4. Subir a Infraestrutura (MySQL e Redis - Opcional)
 
 Se desejar executar a infraestrutura idêntica à de produção:
 ```powershell
@@ -174,13 +188,13 @@ docker compose up -d
 ```
 > **Nota:** Em desenvolvimento local, o uso do Docker é **opcional**. Por padrão (`ENVIRONMENT=development`), o sistema utiliza banco SQLite local (`fraud_test.db`) e possui resiliência com *fail-open* para o rate limiter caso o Redis não esteja ativo.
 
-### 5. Treinar ou Atualizar o Modelo de Machine Learning (Opcional)
+#### 5. Treinar ou Atualizar o Modelo de Machine Learning (Opcional)
 O artefato já se encontra pré-treinado e serializado em `src/ml/fraud_model.joblib`. Para reexecutar o treinamento e inspecionar acurácia, F1 e ROC-AUC:
 ```powershell
 python scripts/train_ml_model.py
 ```
 
-### 6. Iniciar a API e o Dashboard
+#### 6. Iniciar a API e o Dashboard
 ```powershell
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -198,10 +212,10 @@ A suíte de testes utiliza um banco SQLite em memória isolado para garantir que
 pytest -v
 ```
 
-A suíte abrange 53 testes automatizados organizados em 8 módulos coesos:
+A suíte abrange 54 testes automatizados organizados em 8 módulos coesos:
 * `tests/test_auth.py`: Autenticação e bloqueio de lojistas não autorizados.
 * `tests/test_config.py`: Validação de invariantes de segurança e URLs de banco.
-* `tests/test_dashboard_api.py`: Métricas analíticas, simulador de checkout, deliberação manual e mascaramento LGPD.
+* `tests/test_dashboard_api.py`: Métricas analíticas, simulador de checkout, deliberação manual, rota de reset e mascaramento LGPD.
 * `tests/test_exceptions.py`: Hierarquia semântica de exceções DDD (Conflict, Auth, Validation, Infra).
 * `tests/test_schemas.py`: Validações de borda (datas retroativas, UFs brasileiras, IPv4/IPv6, CPF, cartões).
 * `tests/test_rate_limiter.py`: Política de resiliência fail-open e bloqueio HTTP 429.

@@ -61,6 +61,22 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnCancelReview && modalReview) {
     btnCancelReview.addEventListener("click", () => modalReview.classList.remove("active"));
   }
+
+  // Listener do modal de reset de dados de teste
+  const btnOpenReset = document.getElementById("btn-open-reset");
+  const modalReset = document.getElementById("modal-reset");
+  const btnCloseReset = document.getElementById("btn-close-reset");
+  const btnCancelReset = document.getElementById("btn-cancel-reset");
+
+  if (btnOpenReset && modalReset) {
+    btnOpenReset.addEventListener("click", () => modalReset.classList.add("active"));
+  }
+  if (btnCloseReset && modalReset) {
+    btnCloseReset.addEventListener("click", () => modalReset.classList.remove("active"));
+  }
+  if (btnCancelReset && modalReset) {
+    btnCancelReset.addEventListener("click", () => modalReset.classList.remove("active"));
+  }
 });
 
 // -----------------------------------------------------------------
@@ -377,5 +393,41 @@ async function submitManualReview(decision) {
     fetchTransactions();
   } catch (err) {
     alert(`Falha ao deliberar transação: ${err.message}`);
+  }
+}
+
+// -----------------------------------------------------------------
+// 5. Reset do Banco de Testes
+// -----------------------------------------------------------------
+async function executeDatabaseReset() {
+  const btnConfirm = document.getElementById("btn-confirm-reset");
+  if (btnConfirm) {
+    btnConfirm.disabled = true;
+    btnConfirm.textContent = "Zerando...";
+  }
+
+  try {
+    const res = await fetch("/api/v1/dashboard/reset", {
+      method: "POST",
+    });
+
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.detail || `Erro HTTP ${res.status}`);
+    }
+
+    const modalReset = document.getElementById("modal-reset");
+    if (modalReset) modalReset.classList.remove("active");
+
+    // Recarrega os dados zerados imediatamente
+    await fetchMetrics();
+    await fetchTransactions();
+  } catch (err) {
+    alert(`Falha ao zerar dados de teste: ${err.message}`);
+  } finally {
+    if (btnConfirm) {
+      btnConfirm.disabled = false;
+      btnConfirm.textContent = "Zerar Agora";
+    }
   }
 }

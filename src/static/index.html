@@ -31,6 +31,13 @@
       <div class="system-status" style="font-family: monospace;">
         <span id="live-clock">Carregando UTC...</span>
       </div>
+      <button id="btn-open-reset" class="btn-reset-trigger" title="Zerar todas as transações de teste e reiniciar gráficos">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Zerar Dados
+      </button>
       <button id="btn-open-simulator" class="btn-simulate-trigger">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -237,6 +244,28 @@
         <button id="btn-cancel-review" class="btn-cancel">Cancelar</button>
         <button class="btn-confirm-reject" onclick="submitManualReview('Bloqueado')">Bloquear Pedido</button>
         <button class="btn-confirm-action" onclick="submitManualReview('Aprovado')">Aprovar Pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Confirmação para Zerar Dados (perfil_caio §4) -->
+  <div id="modal-reset" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title" style="color: var(--status-blocked);">Zerar Banco de Dados de Teste</div>
+        <button id="btn-close-reset" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.9rem; color: var(--text-primary); margin-bottom: 0.5rem;">
+          Tem certeza de que deseja <strong>apagar todas as transações de teste</strong> e reiniciar as métricas do painel?
+        </p>
+        <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+          Esta ação limpa o banco de homologação local e restaura todos os gráficos e cartões de KPI para o estado inicial zerado. Esta ação não pode ser desfeita.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-reset" class="btn-cancel">Cancelar</button>
+        <button id="btn-confirm-reset" class="btn-confirm-reject" onclick="executeDatabaseReset()">Zerar Agora</button>
       </div>
     </div>
   </div>

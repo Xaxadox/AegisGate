@@ -357,3 +357,23 @@ class DashboardService:
             "customer_name_masked": self._mask_name(name),
             "simulated_at": now.isoformat(),
         }
+
+    # -------------------------------------------------------------------------
+    # 6. Reset do Banco de Homologação/Testes
+    # -------------------------------------------------------------------------
+    def reset_database(self) -> int:
+        """
+        Remove todas as transações e registros de auditoria do banco de desenvolvimento/testes,
+        permitindo reiniciar o RiskBoard com métricas zeradas para novas apresentações e simulações.
+        Retorna a contagem de transações excluídas.
+        """
+        try:
+            self.db.query(AuditLogEntity).delete()
+            deleted_count = self.db.query(TransactionEntity).delete()
+            self.db.commit()
+            logger.info("Banco de testes resetado com sucesso: %d transações removidas.", deleted_count)
+            return deleted_count
+        except Exception as e:
+            self.db.rollback()
+            logger.error("Falha ao resetar banco de testes: %s", e)
+            raise e

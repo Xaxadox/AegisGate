@@ -281,3 +281,39 @@ O AegisGate operava exclusivamente como microsserviço de backend, carecendo de 
 * **Implementação:** Criação de `tests/test_dashboard_api.py` validando entrega de HTML, cálculo de métricas SQL, simulação de cenários, mascaramento LGPD e deliberação manual.
 * **Resultado:** 53 testes automatizados aprovados com 100% de sucesso.
 
+---
+
+## 11. Fase 11: Versão 2.2 - Portabilidade Acadêmica 1-Clique e Gestão de Estado de Testes
+
+### Contexto
+Para garantir que o projeto possa ser facilmente executado e avaliado em computadores de laboratório de universidades ou em bancas examinadoras — onde máquinas frequentemente possuem restrições de rede, firewalls que bloqueiam o PyPI ou ausência de ambiente pré-configurado —, foi solicitado um launcher automático em 1-clique com empacotamento offline de dependências, além de um mecanismo seguro no frontend para reiniciar as transações de teste durante demonstrações.
+
+### Decisões Técnicas Implementadas
+
+#### Decisão 11.1: Inicializador Automático 1-Clique (`iniciar_riskboard.bat` e `.ps1`)
+* **Implementação:**
+  * Criação dos scripts `iniciar_riskboard.bat` e `iniciar_riskboard.ps1`.
+  * Verificação e criação automática do arquivo de ambiente `.env` a partir de `.env.example` caso não exista.
+  * Detecção do interpretador Python do sistema (`python` ou launcher `py`), com criação automática do ambiente virtual `venv` isolado se ausente ou corrompido.
+  * Validação de integridade do modelo de IA (`src/ml/fraud_model.joblib`), executando o treinamento automático se o artefato ainda não estiver presente.
+  * Inicialização do servidor Uvicorn em processo desacoplado e abertura automática do navegador padrão em `http://localhost:8000/dashboard`.
+* **Resultado:** O avaliador precisa apenas dar um duplo clique no arquivo `.bat` para que toda a aplicação suba e abra no navegador em segundos.
+
+#### Decisão 11.2: Repositório Local de Dependências Offline (`vendor_packages/`)
+* **Implementação:**
+  * Download preventivo de todos os 48 pacotes compilados (wheels) para a pasta local `vendor_packages/` (~74 MB).
+  * No script de inicialização, o instalador roda com `--no-index --find-links=vendor_packages`, permitindo que o ambiente virtual seja montado e populado completamente offline, sem necessidade de internet.
+  * Inclusão de fallback transparente para download via rede caso o computador possua versão diferente do Python.
+* **Resultado:** Imunidade contra bloqueios de firewall, instabilidade de rede e políticas restritivas de laboratórios acadêmicos.
+
+#### Decisão 11.3: Reset Seguro do Banco de Homologação no Dashboard (Regra perfil_caio §4)
+* **Implementação:**
+  * Criação do endpoint `POST /api/v1/dashboard/reset` em `src/api/routers/dashboard_router.py` e método `reset_database()` em `src/services/dashboard_service.py`.
+  * Adição de botão "Zerar Dados" no cabeçalho do Dashboard com modal de confirmação explícita (`#modal-reset`), cumprindo a diretriz de confirmação antes de ações destrutivas.
+  * Limpeza atômica das tabelas `transactions` e `audit_logs` no banco de homologação local (`fraud_test.db`), restaurando os KPIs e gráficos do Chart.js para o estado inicial em tempo real.
+* **Resultado:** Facilidade para reiniciar a demonstração do sistema do zero durante testes ou bancas avaliadoras.
+
+#### Decisão 11.4: Validação Automatizada Contínua
+* **Implementação:** Adição do teste `test_dashboard_reset_endpoint` em `tests/test_dashboard_api.py`.
+* **Resultado:** Suíte expandida para 54 testes automatizados com 100% de aprovação.
+

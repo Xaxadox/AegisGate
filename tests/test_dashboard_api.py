@@ -150,3 +150,36 @@ def test_dashboard_review_transaction_workflow():
     )
     assert res_repeat.status_code == 400
     assert "Em Revisão" in res_repeat.json()["detail"]
+
+
+def test_dashboard_reset_endpoint():
+    """Garante que o endpoint POST /api/v1/dashboard/reset limpa as transações e auditorias do banco."""
+    # Cria uma transação para garantir que o banco não está vazio
+    db = TestingSessionLocal()
+    tx = TransactionEntity(
+        id=f"tx_to_reset_{uuid.uuid4().hex[:6]}",
+        amount=99.00,
+        customer_name_encrypted="enc_name",
+        customer_cpf_encrypted="enc_cpf",
+        status="Aprovado",
+        risk_score=10,
+        reasons=[],
+        metadata_info={}
+    )
+    db.add(tx)
+    db.commit()
+    db.close()
+
+    # Chama o endpoint de reset
+    res_reset = client.post("/api/v1/dashboard/reset")
+    assert res_reset.status_code == 200
+    data = res_reset.json()
+    assert data["status"] == "success"
+    assert data["deleted_count"] >= 1
+
+    # Verifica se as métricas agora refletem zero transações
+    res_metrics = client.get("/api/v1/dashboard/metrics")
+    assert res_metrics.status_code == 200
+    metrics = res_metrics.json()
+    assert metrics["total_transactions"] == 0
+    assert metrics["total_amount"] == 0.0
