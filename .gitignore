@@ -43,3 +43,9 @@ data/GeoLite2-City.mmdb
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Arquivos Compactados de Distribuicao
+*.rar
+*.zip
+*.7z
+*.tar.gz
