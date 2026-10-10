@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # MaxMind GeoIP
     GEOIP_DB_PATH: str = Field(default="./data/GeoLite2-City.mmdb")
 
+    # Modelo de Machine Learning (Arquitetura Híbrida)
+    ML_MODEL_PATH: str = Field(default="./src/ml/fraud_model.joblib", description="Caminho do artefato treinado de Machine Learning")
+
     # Credenciais homologadas de parceiros/lojistas (client_id: client_secret)
     MERCHANT_CREDENTIALS: dict[str, str] = Field(
         default_factory=lambda: {

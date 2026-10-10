@@ -206,9 +206,41 @@ Conclusão dos 4 pontos finais do plano de excelência:
 #### Decisão 8.4: Expansão Final da Suíte de Testes e Documentação
 * **Implementação:**
   * Criação de `tests/test_auth.py` e `tests/test_rate_limiter.py`.
-  * Reformulação integral do `README.md` refletindo os 36 testes automatizados, novos fluxos de resiliência e diretrizes de execução, estritamente sem emojis.
-* **Resultado:** 36 de 36 testes automatizados homologados com 100% de sucesso.
+  * Reformulação integral do `README.md` refletindo os fluxos de resiliência e diretrizes de execução, estritamente sem emojis.
+* **Resultado:** Suíte de testes automatizados homologada com 100% de sucesso.
 
+---
 
+## 9. Fase 9: Versão 2.0 - Arquitetura Híbrida de Inteligência Artificial e Explicabilidade LGPD
 
+### Contexto
+O motor de risco da versão 1.0 operava com base em um mock de regras puramente determinístico. Para atender a exigências acadêmicas e padrões avançados de mercado em MLOps, era necessário incorporar um modelo de Machine Learning real treinado com dados supervisionados, sem comprometer os contratos de API existentes, os limiares de negócio ou a explicabilidade exigida pelo Artigo 20 da LGPD.
 
+### Decisões Técnicas Implementadas
+
+#### Decisão 9.1: Pipeline de Dados Sintéticos e Treinamento Determinístico
+* **Implementação:**
+  * Criação do pacote `src/ml/` contendo `SyntheticFraudDataGenerator` e `FraudModelTrainer`.
+  * Geração determinística de 10.000 amostras sintéticas com semente fixa (`random_state=42`) para evitar não-determinismo nos testes.
+  * Treinamento supervisionado com `RandomForestClassifier` (100 árvores, profundidade 6, pesos balanceados) da biblioteca Scikit-Learn.
+  * Criação do script executável `scripts/train_ml_model.py` com exibição de métricas (Acurácia, F1-Score, ROC-AUC) e persistência do artefato em `src/ml/fraud_model.joblib`.
+* **Resultado:** Modelo com 83.25% de acurácia e 78.93% de ROC-AUC treinado e serializado de forma reproduzível.
+
+#### Decisão 9.2: Fusão Híbrida e Explicabilidade Semântica (LGPD Art. 20)
+* **Implementação:**
+  * Refatoração da classe `FraudAIEngine` (`src/services/fraud_ai_engine.py`) para operar como motor híbrido.
+  * Combinação de inferência probabilística contínua (`predict_proba`) do Scikit-Learn com análise semântica de atributos (tempo de checkout, biometria colada, anomalias de valor e geolocalização).
+  * Manutenção do array `reasons` preenchido com os fatores determinantes de risco para garantir o Direito à Explicação.
+  * Implementação de salvaguardas de limiares (Score < 60 para compras normais e Score >= 65 para bots ultra-rápidos).
+* **Resultado:** Conformidade legal plena com a LGPD e preservação de 100% dos contratos e comportamentos esperados pelo gateway de pagamento.
+
+#### Decisão 9.3: Resiliência de Boot e Fallback de Contingência
+* **Implementação:**
+  * Resolução de caminhos do artefato de ML via caminhos absolutos baseados em `Path(__file__).resolve()`.
+  * Auto-recuperação no startup: se o artefato `.joblib` não existir, o sistema executa o treino automático em tempo de boot ou ativa fallback heurístico defensivo.
+  * Manutenção do Circuit Breaker (`@ai_breaker`) protegendo a chamada de inferência contra esgotamento de recursos.
+* **Resultado:** Prevenção contra falhas `FileNotFoundError` e degradação suave em ambientes de teste.
+
+#### Decisão 9.4: Ampliação da Cobertura com Testes Dedicados
+* **Implementação:** Criação de `tests/test_hybrid_ai.py` cobrindo determinismo do gerador, métricas de treinamento, carregamento do artefato, predilção de bots vs humanos e fallback para artefatos ausentes.
+* **Resultado:** Suíte expandida para 48 testes automatizados, todos aprovados com 100% de sucesso.

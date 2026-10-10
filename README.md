@@ -8,7 +8,7 @@
 
 O **AegisGate** atua como um escudo e intermediário crítico entre o checkout da plataforma de e-commerce e o gateway de pagamento:
 1. Recebe os dados comportamentais e da transação via requisição autenticada (JWT) com validação semântica estrita na borda (Pydantic V2).
-2. Avalia o risco probabilístico de fraude utilizando regras comportamentais, biometria de checkout, anomalias geográficas (GeoIP2) e inteligência artificial.
+2. Avalia o risco probabilístico de fraude utilizando **Arquitetura Híbrida de Inteligência Artificial (v2.0)**: modelo supervisionado de Machine Learning (Scikit-Learn RandomForestClassifier) integrado a uma camada de regras semânticas de explicabilidade (LGPD Art. 20), biometria de checkout e anomalias geográficas (GeoIP2).
 3. Classifica a transação em:
    * **Aprovado** (Score < 60)
    * **Em Revisão** (Score entre 60 e 84)
@@ -23,13 +23,14 @@ O **AegisGate** atua como um escudo e intermediário crítico entre o checkout d
 ## Tecnologias Utilizadas
 
 * **Linguagem & Framework:** Python 3.11 + [FastAPI](https://fastapi.tiangolo.com/) com ciclo de vida assíncrono (*Lifespan*)
+* **Machine Learning & Inteligência Artificial:** [Scikit-Learn](https://scikit-learn.org/), [NumPy](https://numpy.org/) e [Joblib](https://joblib.readthedocs.io/) com pipeline de treinamento determinístico (Random Forest) e inferência probabilística contínua
 * **Configuração & Validação:** [Pydantic V2](https://docs.pydantic.dev/) e [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) com validação de segurança *fail-fast* no boot
 * **ORM & Banco de Dados:** [SQLAlchemy 2.0](https://www.sqlalchemy.org/) (`DeclarativeBase`) com índices otimizados, suporte a MySQL 8.0 e SQLite para testes locais
 * **Cache & Rate Limiting:** [Redis](https://redis.io/) com política de resiliência *Fail-Open*
 * **Resiliência:** [PyBreaker](https://github.com/danielfm/pybreaker) (Circuit Breaker Pattern)
 * **Segurança e Criptografia:** `cryptography` (Fernet/AES-256), `hmac` (SHA-256), `secrets` e `PyJWT`
 * **Inteligência Geográfica:** MaxMind GeoIP2 (`geoip2`) com consulta opcional e defensiva
-* **Testes Automatizados:** [Pytest](https://docs.pytest.org/) com 43 testes automatizados cobrindo 100% dos cenários críticos
+* **Testes Automatizados:** [Pytest](https://docs.pytest.org/) com 48 testes automatizados cobrindo 100% dos cenários críticos e o motor de ML
 
 ---
 
@@ -62,6 +63,8 @@ Projeto/
 │   ├── compliance/                 # Relatório de Impacto à Privacidade (RIPD / LGPD)
 │   ├── requisitos/                 # Documentos de Requisitos e Definição do Projeto
 │   └── historico/                  # Registro de Planos e Decisões de Arquitetura
+├── scripts/                        # Scripts de automação e treinamento de Machine Learning
+│   └── train_ml_model.py           # Pipeline executável de treinamento e métricas da Random Forest
 ├── src/
 │   ├── api/                        # Controladores e rotas HTTP (FastAPI)
 │   │   └── routers/                # auth_router.py e transaction_router.py
@@ -71,13 +74,18 @@ Projeto/
 │   │   ├── exceptions.py           # Exceções de domínio (DuplicateTransactionError)
 │   │   ├── rate_limiter.py         # Rate limiter resiliente backed por Redis
 │   │   └── security.py             # JWT Service e autenticação em tempo constante
+│   ├── ml/                         # Módulo de Machine Learning supervisionado
+│   │   ├── dataset_generator.py    # Gerador de dataset sintético determinístico
+│   │   ├── fraud_model.joblib      # Artefato serializado do modelo treinado (Random Forest)
+│   │   └── trainer.py              # Classe orquestradora de treino e avaliação
 │   ├── models/                     # Entidades ORM (domains) e DTOs Pydantic V2 (schemas)
 │   └── services/                   # Regras de negócio (TransactionService, FraudAI, Audit)
-├── tests/                          # Suíte de testes automatizados com pytest (43 testes)
+├── tests/                          # Suíte de testes automatizados com pytest (48 testes)
 │   ├── test_auth.py                # Testes de autenticação de lojistas parceiros
 │   ├── test_config.py              # Testes de configurações e invariantes de segurança
 │   ├── test_exceptions.py          # Testes da hierarquia semântica de exceções DDD
 │   ├── test_fraud_api.py           # Testes de fluxos E2E, antifraude e Circuit Breaker
+│   ├── test_hybrid_ai.py           # Testes do motor híbrido de IA e pipeline de ML
 │   ├── test_rate_limiter.py        # Testes de fail-open e limites de taxa
 │   └── test_schemas.py             # Testes de borda e validações Pydantic V2
 ├── docker-compose.yml              # Serviços de infraestrutura (MySQL 8 e Redis)
@@ -121,8 +129,13 @@ docker compose up -d
 ```
 > **Nota:** Em desenvolvimento local, o uso do Docker é **opcional**. Por padrão (`ENVIRONMENT=development`), o sistema utiliza banco SQLite local (`fraud_test.db`) e possui resiliência com *fail-open* para o rate limiter caso o Redis não esteja ativo.
 
+### 5. Treinar ou Atualizar o Modelo de Machine Learning (Opcional)
+O artefato já se encontra pré-treinado e serializado em `src/ml/fraud_model.joblib`. Para reexecutar o treinamento e inspecionar acurácia, F1 e ROC-AUC:
+```powershell
+python scripts/train_ml_model.py
+```
 
-### 5. Iniciar a API
+### 6. Iniciar a API
 ```powershell
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -138,13 +151,14 @@ A suíte de testes utiliza um banco SQLite em memória isolado para garantir que
 pytest -v
 ```
 
-A suíte abrange 43 testes automatizados organizados em 6 módulos coesos:
+A suíte abrange 48 testes automatizados organizados em 7 módulos coesos:
 * `tests/test_auth.py`: Autenticação e bloqueio de lojistas não autorizados.
 * `tests/test_config.py`: Validação de invariantes de segurança e URLs de banco.
 * `tests/test_exceptions.py`: Hierarquia semântica de exceções DDD (Conflict, Auth, Validation, Infra).
 * `tests/test_schemas.py`: Validações de borda (datas retroativas, UFs brasileiras, IPv4/IPv6, CPF, cartões).
 * `tests/test_rate_limiter.py`: Política de resiliência fail-open e bloqueio HTTP 429.
 * `tests/test_fraud_api.py`: Caminhos felizes, regras comportamentais, Circuit Breaker, 409 Conflict, anonimização LGPD e auditoria em background.
+* `tests/test_hybrid_ai.py`: Testes do modelo de Machine Learning, determinismo de geração de dados sintéticos, resiliência a artefatos ausentes e explicabilidade LGPD.
 
 ---
 
