@@ -4,6 +4,7 @@ venv/
 env/
 ENV/
 vendor_packages/
+python_portable/
 
 # Arquivos de Configuracao e Segredos (Regra perfil_caio §2)
 .env
