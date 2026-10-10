@@ -244,3 +244,40 @@ O motor de risco da versão 1.0 operava com base em um mock de regras puramente 
 #### Decisão 9.4: Ampliação da Cobertura com Testes Dedicados
 * **Implementação:** Criação de `tests/test_hybrid_ai.py` cobrindo determinismo do gerador, métricas de treinamento, carregamento do artefato, predilção de bots vs humanos e fallback para artefatos ausentes.
 * **Resultado:** Suíte expandida para 48 testes automatizados, todos aprovados com 100% de sucesso.
+
+---
+
+## 10. Fase 10: Versão 2.1 - Dashboard de Risco, Backoffice e Simulador de Checkout
+
+### Contexto
+O AegisGate operava exclusivamente como microsserviço de backend, carecendo de interface gráfica para visualização dos resultados da inteligência artificial, auditoria de decisões e demonstração prática em tempo real.
+
+### Decisões Técnicas Implementadas
+
+#### Decisão 10.1: Arquitetura Frontend Nativa e Desacoplada (Zero Dependências Node/npm)
+* **Implementação:**
+  * Construção de Single Page Application (SPA) em Vanilla HTML5, CSS Moderno (Dark Mode com Glassmorphism) e JavaScript ES6+ em `src/static/`.
+  * Empacotamento local da biblioteca Chart.js em `src/static/vendor/chart.umd.min.js`, garantindo operação 100% offline sem depender de CDNs externas.
+  * Montagem de arquivos estáticos no FastAPI via `StaticFiles` e entrega da rota principal em `/dashboard` (com redirecionamento a partir da raiz `/`).
+* **Resultado:** Execução visual completa com um único comando (`uvicorn src.main:app`), sem necessidade de instalar Node.js ou compilar pacotes npm.
+
+#### Decisão 10.2: Agregação SQL Otimizada e Mascaramento LGPD em Visualização
+* **Implementação:**
+  * Criação do `DashboardService` (`src/services/dashboard_service.py`) e do controlador `src/api/routers/dashboard_router.py`.
+  * Cálculo de métricas (total processado, taxas de status, score médio) diretamente no banco através de funções agregadas SQL (`func.count`, `func.sum`, `func.avg`).
+  * Descriptografia defensiva em tempo de visualização com mascaramento dinâmico de dados pessoais sensíveis (`C*** S****`, `***.***.789-00`), prevenindo vazamento de dados de operadores na tela.
+
+#### Decisão 10.3: Simulador de Checkout Integrado (1-Click Presets)
+* **Implementação:**
+  * Criação do endpoint `POST /api/v1/dashboard/simulate` com cenários pré-configurados (Cliente Legítimo, Ataque de Bot, Cartão Colado com Ctrl+V e Alto Valor com Estado Divergente).
+  * Execução da inferência pela inteligência artificial em milissegundos com retorno visual de score, status e explicabilidade LGPD, atualizando automaticamente os cards e gráficos da página.
+
+#### Decisão 10.4: Deliberação Manual com Preservação de Histórico
+* **Implementação:**
+  * Endpoint `POST /api/v1/dashboard/transactions/{id}/review` restrito estritamente a pedidos com status original "Em Revisão".
+  * Atualização da deliberação do analista com registro de observações e trilha na tabela `audit_logs`, preservando os scores e justificativas originais da IA intactos.
+
+#### Decisão 10.5: Expansão da Suíte de Testes
+* **Implementação:** Criação de `tests/test_dashboard_api.py` validando entrega de HTML, cálculo de métricas SQL, simulação de cenários, mascaramento LGPD e deliberação manual.
+* **Resultado:** 53 testes automatizados aprovados com 100% de sucesso.
+

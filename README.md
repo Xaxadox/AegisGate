@@ -17,12 +17,14 @@ O **AegisGate** atua como um escudo e intermediário crítico entre o checkout d
 5. Garante idempotência e semântica REST: tentativas de reprocessamento do mesmo `transaction_id` retornam **HTTP 409 Conflict**.
 6. Registra logs de auditoria de forma **assíncrona em background** para manter o tempo de resposta do checkout ultrarrápido.
 7. Protege os endpoints com **Rate Limiting** via Redis (com salvaguarda resiliente *Fail-Open*).
+8. Disponibiliza um **Dashboard de Risco & Backoffice** integrado (`/dashboard`) com visual moderno em tema escuro, gráficos analíticos interativos, mascaramento LGPD em tempo de visualização e um **Simulador de Checkout (1-Click)** para demonstração em tempo real.
 
 ---
 
 ## Tecnologias Utilizadas
 
 * **Linguagem & Framework:** Python 3.11 + [FastAPI](https://fastapi.tiangolo.com/) com ciclo de vida assíncrono (*Lifespan*)
+* **Frontend & Dashboard:** HTML5 semântico, Vanilla CSS moderno (Dark Theme e Glassmorphism) e JavaScript nativo (ES6+) com [Chart.js](https://www.chartjs.org/) embutido (zero dependências de Node.js ou npm)
 * **Machine Learning & Inteligência Artificial:** [Scikit-Learn](https://scikit-learn.org/), [NumPy](https://numpy.org/) e [Joblib](https://joblib.readthedocs.io/) com pipeline de treinamento determinístico (Random Forest) e inferência probabilística contínua
 * **Configuração & Validação:** [Pydantic V2](https://docs.pydantic.dev/) e [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) com validação de segurança *fail-fast* no boot
 * **ORM & Banco de Dados:** [SQLAlchemy 2.0](https://www.sqlalchemy.org/) (`DeclarativeBase`) com índices otimizados, suporte a MySQL 8.0 e SQLite para testes locais
@@ -30,7 +32,7 @@ O **AegisGate** atua como um escudo e intermediário crítico entre o checkout d
 * **Resiliência:** [PyBreaker](https://github.com/danielfm/pybreaker) (Circuit Breaker Pattern)
 * **Segurança e Criptografia:** `cryptography` (Fernet/AES-256), `hmac` (SHA-256), `secrets` e `PyJWT`
 * **Inteligência Geográfica:** MaxMind GeoIP2 (`geoip2`) com consulta opcional e defensiva
-* **Testes Automatizados:** [Pytest](https://docs.pytest.org/) com 48 testes automatizados cobrindo 100% dos cenários críticos e o motor de ML
+* **Testes Automatizados:** [Pytest](https://docs.pytest.org/) com 53 testes automatizados cobrindo 100% dos cenários críticos, pipeline de ML e API do Dashboard
 
 ---
 
@@ -39,6 +41,7 @@ O **AegisGate** atua como um escudo e intermediário crítico entre o checkout d
 * **LGPD (Lei Geral de Proteção de Dados):**
   * Dados pessoais do titular (Nome, CPF) são encriptados com AES-256 no banco de dados.
   * O retorno da API inclui o array explicativo `reasons` para garantir o **Direito à Explicação** em decisões automatizadas.
+  * O Dashboard de risco aplica mascaramento dinâmico em tempo de exibição (`C*** S****`, `***.***.789-00`), impedindo vazamento de dados sensíveis para operadores de tela.
 * **PCI-DSS:**
   * O código de segurança (CVV) **nunca** é recebido nem armazenado.
   * BIN e últimos 4 dígitos do cartão são tokenizados via HMAC determinístico com salt seguro, permitindo identificar reincidência de cartões clonados sem expor os dígitos reais.
@@ -67,7 +70,7 @@ Projeto/
 │   └── train_ml_model.py           # Pipeline executável de treinamento e métricas da Random Forest
 ├── src/
 │   ├── api/                        # Controladores e rotas HTTP (FastAPI)
-│   │   └── routers/                # auth_router.py e transaction_router.py
+│   │   └── routers/                # auth_router.py, transaction_router.py e dashboard_router.py
 │   ├── core/                       # Configurações centrais, segurança, banco, exceções e rate limiting
 │   │   ├── config.py               # Pydantic Settings com validações fail-fast de produção
 │   │   ├── database.py             # SQLAlchemy 2.0 DeclarativeBase e engine pool
@@ -79,10 +82,16 @@ Projeto/
 │   │   ├── fraud_model.joblib      # Artefato serializado do modelo treinado (Random Forest)
 │   │   └── trainer.py              # Classe orquestradora de treino e avaliação
 │   ├── models/                     # Entidades ORM (domains) e DTOs Pydantic V2 (schemas)
-│   └── services/                   # Regras de negócio (TransactionService, FraudAI, Audit)
-├── tests/                          # Suíte de testes automatizados com pytest (48 testes)
+│   ├── services/                   # Regras de negócio (TransactionService, DashboardService, FraudAI, Audit)
+│   └── static/                     # Interface Web do Dashboard de Risco e Simulador (SPA)
+│       ├── css/dashboard.css       # Design System responsivo em Dark Mode com Glassmorphism
+│       ├── js/dashboard.js         # Cliente assíncrono com consultas e controle do simulador
+│       ├── vendor/chart.umd.min.js # Chart.js minificado e empacotado localmente (100% offline)
+│       └── index.html              # Estrutura semântica do Dashboard
+├── tests/                          # Suíte de testes automatizados com pytest (53 testes)
 │   ├── test_auth.py                # Testes de autenticação de lojistas parceiros
 │   ├── test_config.py              # Testes de configurações e invariantes de segurança
+│   ├── test_dashboard_api.py       # Testes de métricas, simulação, deliberação e mascaramento LGPD
 │   ├── test_exceptions.py          # Testes da hierarquia semântica de exceções DDD
 │   ├── test_fraud_api.py           # Testes de fluxos E2E, antifraude e Circuit Breaker
 │   ├── test_hybrid_ai.py           # Testes do motor híbrido de IA e pipeline de ML
@@ -171,11 +180,13 @@ O artefato já se encontra pré-treinado e serializado em `src/ml/fraud_model.jo
 python scripts/train_ml_model.py
 ```
 
-### 6. Iniciar a API
+### 6. Iniciar a API e o Dashboard
 ```powershell
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
-Acesse a documentação interativa Swagger em: [http://localhost:8000/docs](http://localhost:8000/docs).
+* **Dashboard de Risco & Simulador:** [http://localhost:8000/dashboard](http://localhost:8000/dashboard) (ou acesse a raiz `http://localhost:8000/`)
+* **Documentação Swagger Interativa:** [http://localhost:8000/docs](http://localhost:8000/docs)
+* **Documentação ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ---
 
@@ -187,9 +198,10 @@ A suíte de testes utiliza um banco SQLite em memória isolado para garantir que
 pytest -v
 ```
 
-A suíte abrange 48 testes automatizados organizados em 7 módulos coesos:
+A suíte abrange 53 testes automatizados organizados em 8 módulos coesos:
 * `tests/test_auth.py`: Autenticação e bloqueio de lojistas não autorizados.
 * `tests/test_config.py`: Validação de invariantes de segurança e URLs de banco.
+* `tests/test_dashboard_api.py`: Métricas analíticas, simulador de checkout, deliberação manual e mascaramento LGPD.
 * `tests/test_exceptions.py`: Hierarquia semântica de exceções DDD (Conflict, Auth, Validation, Infra).
 * `tests/test_schemas.py`: Validações de borda (datas retroativas, UFs brasileiras, IPv4/IPv6, CPF, cartões).
 * `tests/test_rate_limiter.py`: Política de resiliência fail-open e bloqueio HTTP 429.

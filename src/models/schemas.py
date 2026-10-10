@@ -95,3 +95,72 @@ class EvaluationResponse(BaseModel):
     status: TransactionStatus
     score: int = Field(..., ge=0, le=100, description="Score probabilístico de fraude (0 a 100)")
     reasons: List[str] = Field(default_factory=list, description="Justificativas para o score (LGPD Explicabilidade)")
+
+
+# =====================================================================
+# DTOs para o Dashboard de Risco & Simulador (Backoffice)
+# =====================================================================
+
+class DashboardMetricsResponse(BaseModel):
+    """Métricas agregadas em tempo real para os cards e gráficos do dashboard."""
+    total_transactions: int
+    total_amount: float
+    approved_count: int
+    review_count: int
+    blocked_count: int
+    approval_rate: float
+    review_rate: float
+    blocked_rate: float
+    average_risk_score: float
+    top_reasons: dict[str, int]
+
+
+class DashboardTransactionItem(BaseModel):
+    """Item individual da tabela de transações com proteção LGPD por padrão."""
+    id: str
+    amount: float
+    customer_name_masked: str
+    customer_cpf_masked: str
+    card_bin: Optional[str] = None
+    card_last4: Optional[str] = None
+    status: str
+    risk_score: int
+    reasons: List[str]
+    metadata_info: Optional[dict] = None
+    created_at: str
+
+
+class DashboardTransactionListResponse(BaseModel):
+    """Resposta paginada da listagem de transações para o analista."""
+    transactions: List[DashboardTransactionItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class DashboardReviewRequest(BaseModel):
+    """Payload para ação manual do analista de risco sobre transação em revisão."""
+    new_status: TransactionStatus = Field(..., description="Novo status deliberado pelo analista (Aprovado ou Bloqueado)")
+    analyst_note: str = Field(..., min_length=3, max_length=500, description="Justificativa da intervenção humana")
+
+
+class DashboardReviewResponse(BaseModel):
+    """Confirmação da revisão manual da transação."""
+    transaction_id: str
+    previous_status: str
+    new_status: str
+    analyst_note: str
+    reviewed_at: str
+
+
+class DashboardSimulateRequest(BaseModel):
+    """Configuração para o simulador de checkout integrado no frontend."""
+    scenario: str = Field(default="legitimate", description="Cenário predefinido: legitimate, bot_speed, pasted_card, high_amount")
+    amount: Optional[float] = Field(default=None, gt=0)
+    customer_name: Optional[str] = None
+    customer_cpf: Optional[str] = None
+    customer_ip: Optional[str] = None
+    delivery_state: Optional[str] = None
+    is_card_pasted: Optional[bool] = None
+    card_bin: Optional[str] = None
+    card_last_four: Optional[str] = None

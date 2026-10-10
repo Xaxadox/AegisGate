@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AegisGate - Painel de Controle de Risco e Detecção de Fraudes em Tempo Real com Inteligência Artificial e LGPD">
+  <title>AegisGate | Risk & Security Dashboard</title>
+  
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="dashboard-header">
+    <div class="brand-wrapper">
+      <div class="brand-shield">AG</div>
+      <div>
+        <span class="brand-title">AegisGate</span>
+        <span class="brand-badge">v2.0 Risk Intelligence</span>
+      </div>
+    </div>
+
+    <div class="header-meta">
+      <div class="system-status">
+        <span class="status-dot"></span>
+        <span id="api-status-text">Motor IA Online</span>
+      </div>
+      <div class="system-status" style="font-family: monospace;">
+        <span id="live-clock">Carregando UTC...</span>
+      </div>
+      <button id="btn-open-simulator" class="btn-simulate-trigger">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        Simular Checkout
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="dashboard-container">
+
+    <!-- KPI Metric Cards Grid -->
+    <section class="metrics-grid">
+      <div class="metric-card card-score">
+        <div class="metric-label">
+          <span>Volume Transacionado</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+        </div>
+        <div class="metric-value" id="kpi-total-amount">R$ 0,00</div>
+        <div class="metric-subtext">Total monetário processado</div>
+      </div>
+
+      <div class="metric-card card-approved">
+        <div class="metric-label">
+          <span>Taxa de Aprovação</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div class="metric-value" id="kpi-approval-rate">0.0%</div>
+        <div class="metric-subtext">Transações sem fricção (Score &lt; 60)</div>
+      </div>
+
+      <div class="metric-card card-blocked">
+        <div class="metric-label">
+          <span>Taxa de Bloqueio</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+        </div>
+        <div class="metric-value" id="kpi-blocked-rate">0.0%</div>
+        <div class="metric-subtext">Fraudes e bots mitigados (Score &ge; 85)</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">
+          <span>Score Médio de Risco</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+          </svg>
+        </div>
+        <div class="metric-value" id="kpi-avg-score">0.0</div>
+        <div class="metric-subtext">Total: <strong id="kpi-total-tx" style="color:#fff; margin-left: 4px;">0</strong> transações avaliadas</div>
+      </div>
+    </section>
+
+    <!-- Analytics Charts Section -->
+    <section class="charts-grid">
+      <!-- Status Donut Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Distribuição de Decisões</div>
+            <div class="chart-subtitle">Classificação em tempo real do motor de IA</div>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="chart-status"></canvas>
+        </div>
+      </div>
+
+      <!-- Top Detected Anomalies Bar Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Principais Anomalias e Fatores de Risco</div>
+            <div class="chart-subtitle">Direito à Explicação (LGPD Art. 20)</div>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="chart-reasons"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Transactions Table Section -->
+    <section class="transactions-panel">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <div class="panel-title">Trilha Recente de Transações</div>
+          <div class="panel-caption">Dados pessoais protegidos com mascaramento dinâmico em conformidade com a LGPD</div>
+        </div>
+
+        <div class="panel-actions">
+          <select id="status-filter" class="status-filter-select">
+            <option value="">Todos os Status</option>
+            <option value="Aprovado">Aprovado</option>
+            <option value="Em Revisão">Em Revisão</option>
+            <option value="Bloqueado">Bloqueado</option>
+          </select>
+          <button id="btn-refresh-tx" class="btn-refresh" title="Atualizar dados">
+            Atualizar
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="transactions-table">
+          <thead>
+            <tr>
+              <th>ID Transação</th>
+              <th>Valor (R$)</th>
+              <th>Titular (LGPD)</th>
+              <th>Score IA</th>
+              <th>Status</th>
+              <th>Fatores de Risco</th>
+              <th>Deliberação</th>
+            </tr>
+          </thead>
+          <tbody id="transactions-tbody">
+            <!-- Preenchido dinamicamente pelo dashboard.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal do Simulador de Checkout (1-Click Demonstration) -->
+  <div id="modal-simulator" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Simulador de Checkout em Tempo Real</div>
+        <button id="btn-close-simulator" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+          Escolha um cenário para disparar uma transação de teste. O motor híbrido de Machine Learning avaliará o risco e atualizará o painel em milissegundos:
+        </p>
+
+        <div class="scenario-presets">
+          <button class="btn-preset" onclick="runSimulation('legitimate')">
+            <span class="preset-title" style="color: var(--status-approved);">1. Cliente Legítimo</span>
+            <span class="preset-desc">Checkout humano (2 min), sem Ctrl+V, mesmo estado.</span>
+          </button>
+
+          <button class="btn-preset" onclick="runSimulation('bot_speed')">
+            <span class="preset-title" style="color: var(--status-review);">2. Ataque de Bot</span>
+            <span class="preset-desc">Submissão ultra-rápida (150ms). Dispara anomalia de bot.</span>
+          </button>
+
+          <button class="btn-preset" onclick="runSimulation('pasted_card')">
+            <span class="preset-title" style="color: var(--status-review);">3. Cartão Colado</span>
+            <span class="preset-desc">Biometria: comprador colou dados com Ctrl+V.</span>
+          </button>
+
+          <button class="btn-preset" onclick="runSimulation('high_amount')">
+            <span class="preset-title" style="color: var(--status-blocked);">4. Alto Valor + Estado</span>
+            <span class="preset-desc">R$ 7.490,00 com divergência geográfica e rapidez.</span>
+          </button>
+        </div>
+
+        <!-- Painel de Exibição do Resultado Imediato -->
+        <div id="sim-result-panel" class="simulation-result"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="document.getElementById('modal-simulator').classList.remove('active')">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Deliberação Manual de Analista -->
+  <div id="modal-review" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Deliberação Manual de Risco</div>
+        <button id="btn-close-review" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+          Esta transação foi classificada como <strong>Em Revisão</strong> pelo motor de IA. Como analista humano, você pode deliberar a aprovação ou o bloqueio definitivo:
+        </p>
+
+        <div style="background: rgba(11, 15, 23, 0.5); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 0.85rem;">
+          <div>Transação: <code id="review-tx-id" style="color: var(--accent-cyan);"></code></div>
+          <div style="margin-top: 0.25rem;">Score de Risco Original: <strong id="review-tx-score" style="color: var(--status-review);"></strong> / 100</div>
+        </div>
+
+        <div>
+          <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+            Justificativa do Analista (Registrada na Trilha de Auditoria):
+          </label>
+          <textarea id="review-note" rows="3" style="width: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.6rem; color: #fff; font-family: inherit; font-size: 0.85rem; outline: none;" placeholder="Ex: Contato telefônico realizado com o titular; compra confirmada."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-review" class="btn-cancel">Cancelar</button>
+        <button class="btn-confirm-reject" onclick="submitManualReview('Bloqueado')">Bloquear Pedido</button>
+        <button class="btn-confirm-action" onclick="submitManualReview('Aprovado')">Aprovar Pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts locais (Zero dependência de internet externa) -->
+  <script src="/static/vendor/chart.umd.min.js"></script>
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
