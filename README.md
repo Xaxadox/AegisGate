@@ -95,6 +95,42 @@ Projeto/
 
 ---
 
+## Modelagem do Banco de Dados (DER)
+
+O banco de dados relacional é estruturado em duas entidades principais conectadas por cardinalidade 1:N, separando os registros de checkout avaliados pela inteligência artificial da trilha imutável de auditoria:
+
+```mermaid
+erDiagram
+    transactions {
+        varchar id PK "UUID v4"
+        decimal amount "Valor da transacao"
+        varchar customer_name_encrypted "AES-256 (LGPD)"
+        varchar customer_cpf_encrypted "AES-256 (LGPD)"
+        varchar card_bin_tokenized "HMAC-SHA256 (PCI-DSS)"
+        varchar card_last4_tokenized "HMAC-SHA256 (PCI-DSS)"
+        enum status "Aprovado, Em Revisao, Bloqueado"
+        int risk_score "0 a 100"
+        json reasons "Explicabilidade LGPD"
+        json metadata_info "IP, Biometria, Geo"
+        datetime created_at "UTC"
+    }
+
+    audit_logs {
+        int id PK "Auto Increment"
+        varchar transaction_id FK "FK transactions.id"
+        varchar client_ip "IPv4 ou IPv6"
+        varchar endpoint_accessed "Rota HTTP"
+        datetime timestamp "UTC"
+    }
+
+    transactions ||--o{ audit_logs : "gera (1:N)"
+```
+
+* **Conformidade LGPD:** Dados pessoais (Nome, CPF) são encriptados com AES-256 no banco de dados. O array `reasons` garante o Direito a Explicacao (Art. 20).
+* **Conformidade PCI-DSS:** O numero do cartao nao e armazenado em texto claro; apenas hashes com HMAC-SHA256 deterministico e salt sao persistidos. O codigo de seguranca (CVV) nunca e recebido nem armazenado.
+
+---
+
 ## Como Executar Localmente
 
 ### 1. Pré-requisitos
