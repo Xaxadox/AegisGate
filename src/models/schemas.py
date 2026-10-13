@@ -1,6 +1,6 @@
 import ipaddress
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from enum import Enum
 
@@ -58,9 +58,9 @@ class TransactionRequest(BaseModel):
     @classmethod
     def validate_customer_cpf(cls, value: str) -> str:
         digits = "".join(filter(str.isdigit, value))
-        if len(digits) != 11:
+        if len(digits) != 11 or len(set(digits)) == 1:
             raise ValueError("CPF deve conter exatamente 11 dígitos numéricos.")
-        return value.strip()
+        return digits
 
     @field_validator("card_bin")
     @classmethod
@@ -84,6 +84,16 @@ class TransactionRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_checkout_chronology(self) -> "TransactionRequest":
+        if self.started_checkout_at.tzinfo is None:
+            self.started_checkout_at = self.started_checkout_at.replace(tzinfo=timezone.utc)
+        else:
+            self.started_checkout_at = self.started_checkout_at.astimezone(timezone.utc)
+
+        if self.submitted_checkout_at.tzinfo is None:
+            self.submitted_checkout_at = self.submitted_checkout_at.replace(tzinfo=timezone.utc)
+        else:
+            self.submitted_checkout_at = self.submitted_checkout_at.astimezone(timezone.utc)
+
         if self.submitted_checkout_at < self.started_checkout_at:
             raise ValueError(
                 "Inconsistência temporal: submitted_checkout_at não pode ser anterior a started_checkout_at."
@@ -142,6 +152,13 @@ class DashboardReviewRequest(BaseModel):
     """Payload para ação manual do analista de risco sobre transação em revisão."""
     new_status: TransactionStatus = Field(..., description="Novo status deliberado pelo analista (Aprovado ou Bloqueado)")
     analyst_note: str = Field(..., min_length=3, max_length=500, description="Justificativa da intervenção humana")
+
+    @field_validator("new_status")
+    @classmethod
+    def validate_final_decision(cls, value: TransactionStatus) -> TransactionStatus:
+        if value not in (TransactionStatus.APPROVED, TransactionStatus.BLOCKED):
+            raise ValueError("A deliberação manual deve definir o status como 'Aprovado' ou 'Bloqueado'.")
+        return value
 
 
 class DashboardReviewResponse(BaseModel):

@@ -10,12 +10,45 @@ let reasonsChartInstance = null;
 let currentReviewTransactionId = null;
 
 // -----------------------------------------------------------------
+// Funções Utilitárias e Sanitização contra XSS
+// -----------------------------------------------------------------
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getCurrentStatusFilter() {
+  const statusFilter = document.getElementById("status-filter");
+  return statusFilter ? statusFilter.value : "";
+}
+
+// -----------------------------------------------------------------
 // Inicialização no carregamento da página
 // -----------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
   initLiveClock();
   fetchMetrics();
   fetchTransactions();
+
+  // Event Delegation para botões de revisão manual (Prevenção de XSS)
+  const tbody = document.getElementById("transactions-tbody");
+  if (tbody) {
+    tbody.addEventListener("click", (e) => {
+      const btn = e.target.closest(".btn-action-review");
+      if (btn) {
+        const txId = btn.dataset.txId;
+        const txScore = btn.dataset.txScore;
+        if (txId) {
+          openReviewModal(txId, txScore);
+        }
+      }
+    });
+  }
 
   // Listeners de filtro e atualização
   const statusFilter = document.getElementById("status-filter");
@@ -29,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnRefresh) {
     btnRefresh.addEventListener("click", () => {
       fetchMetrics();
-      fetchTransactions(statusFilter ? statusFilter.value : "");
+      fetchTransactions(getCurrentStatusFilter());
     });
   }
 
@@ -242,14 +275,14 @@ async function fetchTransactions(statusFilter = "") {
         else if (tx.risk_score >= 60) scoreClass = "score-medium";
 
         const reasonsHtml = tx.reasons.length
-          ? tx.reasons.map((r) => `<span class="reason-tag">${r}</span>`).join("")
+          ? tx.reasons.map((r) => `<span class="reason-tag">${escapeHtml(r)}</span>`).join("")
           : `<span style="color: var(--text-muted); font-size: 0.75rem;">Nenhuma anomalia</span>`;
 
-        const statusClass = tx.status.replace(" ", "-");
+        const statusClass = escapeHtml(tx.status.replace(" ", "-"));
 
         const actionHtml =
           tx.status === "Em Revisão"
-            ? `<button class="btn-action-review" onclick="openReviewModal('${tx.id}', '${tx.risk_score}')">Revisar</button>`
+            ? `<button class="btn-action-review" data-tx-id="${escapeHtml(tx.id)}" data-tx-score="${escapeHtml(tx.risk_score)}">Revisar</button>`
             : `<span style="font-size:0.75rem; color:var(--text-muted);">-</span>`;
 
         const formattedDate = new Date(tx.created_at).toLocaleTimeString("pt-BR", {
@@ -260,19 +293,22 @@ async function fetchTransactions(statusFilter = "") {
 
         return `
           <tr>
-            <td><span class="tx-id-badge">${tx.id.substring(0, 14)}...</span></td>
+            <td>
+              <span class="tx-id-badge">${escapeHtml(tx.id.substring(0, 14))}...</span>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">${escapeHtml(formattedDate)}</div>
+            </td>
             <td style="font-weight: 600; color: #fff;">
-              R$ ${tx.amount.toFixed(2)}
+              R$ ${escapeHtml(Number(tx.amount).toFixed(2))}
             </td>
             <td>
-              <div style="color: var(--text-primary);">${tx.customer_name_masked}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">${tx.customer_cpf_masked}</div>
+              <div style="color: var(--text-primary);">${escapeHtml(tx.customer_name_masked)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(tx.customer_cpf_masked)}</div>
             </td>
             <td>
-              <span class="score-pill ${scoreClass}">${tx.risk_score}</span>
+              <span class="score-pill ${escapeHtml(scoreClass)}">${escapeHtml(tx.risk_score)}</span>
             </td>
             <td>
-              <span class="status-badge ${statusClass}">${tx.status}</span>
+              <span class="status-badge ${statusClass}">${escapeHtml(tx.status)}</span>
             </td>
             <td>
               <div class="reasons-tags">${reasonsHtml}</div>
@@ -312,40 +348,42 @@ async function runSimulation(scenario) {
     if (data.status === "Em Revisão") statusColor = "var(--status-review)";
     if (data.status === "Bloqueado") statusColor = "var(--status-blocked)";
 
+    const statusBadgeClass = escapeHtml(data.status.replace(" ", "-"));
+
     resultPanel.innerHTML = `
       <div style="font-weight: 600; color: #fff; font-size: 0.95rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
         Resultado da Inferência em Tempo Real
       </div>
       <div class="sim-metric-row">
         <span style="color: var(--text-muted); font-size: 0.85rem;">Status Deliberado:</span>
-        <span class="status-badge ${data.status.replace(" ", "-")}">${data.status}</span>
+        <span class="status-badge ${statusBadgeClass}">${escapeHtml(data.status)}</span>
       </div>
       <div class="sim-metric-row">
         <span style="color: var(--text-muted); font-size: 0.85rem;">Score de Risco IA:</span>
-        <span style="font-size: 1.1rem; font-weight: 700; color: ${statusColor};">${data.score} / 100</span>
+        <span style="font-size: 1.1rem; font-weight: 700; color: ${statusColor};">${escapeHtml(data.score)} / 100</span>
       </div>
       <div class="sim-metric-row">
         <span style="color: var(--text-muted); font-size: 0.85rem;">Comprador (LGPD):</span>
-        <span style="font-size: 0.85rem; color: #fff;">${data.customer_name_masked}</span>
+        <span style="font-size: 0.85rem; color: #fff;">${escapeHtml(data.customer_name_masked)}</span>
       </div>
       <div>
         <span style="color: var(--text-muted); font-size: 0.85rem;">Justificativas (Explicabilidade LGPD):</span>
         <div class="reasons-tags" style="margin-top: 0.4rem;">
           ${
             data.reasons.length
-              ? data.reasons.map((r) => `<span class="reason-tag">${r}</span>`).join("")
+              ? data.reasons.map((r) => `<span class="reason-tag">${escapeHtml(r)}</span>`).join("")
               : '<span style="color: var(--status-approved); font-size:0.75rem;">Nenhuma regra violada (Aprovado com segurança)</span>'
           }
         </div>
       </div>
     `;
 
-    // Atualiza imediatamente os dados do painel em background
+    // Atualiza imediatamente os dados do painel em background preservando filtro ativo
     fetchMetrics();
-    fetchTransactions();
+    fetchTransactions(getCurrentStatusFilter());
   } catch (err) {
     console.error("Erro na simulação:", err);
-    resultPanel.innerHTML = `<div style="color: var(--status-blocked); padding: 1rem;">Erro ao executar simulação: ${err.message}</div>`;
+    resultPanel.innerHTML = `<div style="color: var(--status-blocked); padding: 1rem;">Erro ao executar simulação: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -370,7 +408,7 @@ async function submitManualReview(decision) {
   const note = noteInput && noteInput.value.trim() ? noteInput.value.trim() : "Deliberação manual realizada pelo analista de fraude.";
 
   try {
-    const res = await fetch(`/api/v1/dashboard/transactions/${currentReviewTransactionId}/review`, {
+    const res = await fetch(`/api/v1/dashboard/transactions/${encodeURIComponent(currentReviewTransactionId)}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -388,16 +426,16 @@ async function submitManualReview(decision) {
     if (modal) modal.classList.remove("active");
     if (noteInput) noteInput.value = "";
 
-    // Atualiza o dashboard
+    // Atualiza o dashboard preservando filtro ativo
     fetchMetrics();
-    fetchTransactions();
+    fetchTransactions(getCurrentStatusFilter());
   } catch (err) {
     alert(`Falha ao deliberar transação: ${err.message}`);
   }
 }
 
 // -----------------------------------------------------------------
-// 5. Reset do Banco de Testes
+// 6. Reset do Banco de Testes
 // -----------------------------------------------------------------
 async function executeDatabaseReset() {
   const btnConfirm = document.getElementById("btn-confirm-reset");
@@ -419,9 +457,9 @@ async function executeDatabaseReset() {
     const modalReset = document.getElementById("modal-reset");
     if (modalReset) modalReset.classList.remove("active");
 
-    // Recarrega os dados zerados imediatamente
+    // Recarrega os dados zerados imediatamente preservando filtro ativo
     await fetchMetrics();
-    await fetchTransactions();
+    await fetchTransactions(getCurrentStatusFilter());
   } catch (err) {
     alert(`Falha ao zerar dados de teste: ${err.message}`);
   } finally {

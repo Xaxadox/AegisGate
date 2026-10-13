@@ -108,3 +108,39 @@ def test_api_rejeita_payload_inconsistente_com_status_422():
     response = client.post("/api/v1/transactions/evaluate", json=data, headers=get_auth_headers())
     assert response.status_code == 422
     assert "Inconsistência temporal" in str(response.json())
+
+
+def test_schema_aceita_datas_mistas_naive_e_aware():
+    """Garante que a comparação cronológica normaliza datetimes naive e aware para UTC sem erro 500."""
+    data = get_base_data()
+    data["started_checkout_at"] = "2026-10-13T10:00:00"
+    data["submitted_checkout_at"] = "2026-10-13T10:02:00Z"
+    req = TransactionRequest(**data)
+    assert req.started_checkout_at.tzinfo is not None
+    assert req.submitted_checkout_at.tzinfo is not None
+    assert req.submitted_checkout_at > req.started_checkout_at
+
+
+def test_schema_rejeita_cpf_com_digitos_repetidos():
+    """Bloqueia CPFs com todos os dígitos idênticos (ex: 00000000000)."""
+    data = get_base_data()
+    data["customer_cpf"] = "000.000.000-00"
+    with pytest.raises(ValidationError, match="CPF deve conter exatamente 11 dígitos"):
+        TransactionRequest(**data)
+
+
+def test_dashboard_review_request_rejeita_status_em_revisao():
+    """Garante que DashboardReviewRequest só aceita deliberações de 'Aprovado' ou 'Bloqueado'."""
+    from src.models.schemas import DashboardReviewRequest, TransactionStatus
+
+    # Válidos
+    req_aprovado = DashboardReviewRequest(new_status=TransactionStatus.APPROVED, analyst_note="Aprovado pelo analista")
+    assert req_aprovado.new_status == TransactionStatus.APPROVED
+
+    req_bloqueado = DashboardReviewRequest(new_status=TransactionStatus.BLOCKED, analyst_note="Bloqueado por suspeita")
+    assert req_bloqueado.new_status == TransactionStatus.BLOCKED
+
+    # Inválido: tentar reenviar 'Em Revisão'
+    with pytest.raises(ValidationError, match="A deliberação manual deve definir o status"):
+        DashboardReviewRequest(new_status=TransactionStatus.REVIEW, analyst_note="Tentativa de manter em revisao")
+

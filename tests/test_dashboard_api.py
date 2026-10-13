@@ -183,3 +183,12 @@ def test_dashboard_reset_endpoint():
     metrics = res_metrics.json()
     assert metrics["total_transactions"] == 0
     assert metrics["total_amount"] == 0.0
+
+
+def test_dashboard_reset_bloqueado_em_producao(monkeypatch):
+    """Garante que o endpoint POST /api/v1/dashboard/reset retorna 403 Forbidden em ambiente de produção."""
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+
+    res_reset = client.post("/api/v1/dashboard/reset")
+    assert res_reset.status_code == 403
+    assert "bloqueada em ambiente de produção" in res_reset.json()["detail"]

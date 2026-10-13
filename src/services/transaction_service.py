@@ -93,7 +93,8 @@ class TransactionService:
             metadata_info={
                 "ip": request.customer_ip,
                 "is_pasted": request.is_card_pasted,
-                "delivery_state": request.delivery_state
+                "delivery_state": request.delivery_state,
+                "card_last_four": request.card_last_four,
             }
         )
         

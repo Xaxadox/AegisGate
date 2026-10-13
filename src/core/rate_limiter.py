@@ -31,21 +31,33 @@ class RateLimiter:
             )
         return self._redis_client
 
+    @staticmethod
+    def _extract_client_ip(request: Request) -> str:
+        if hasattr(request, "headers") and request.headers is not None:
+            try:
+                forwarded_for = request.headers.get("x-forwarded-for")
+                if forwarded_for and isinstance(forwarded_for, str):
+                    return forwarded_for.split(",")[0].strip()
+            except Exception:
+                pass
+        return request.client.host if request.client else "unknown_ip"
+
     def __call__(self, request: Request):
-        # Identifica o chamador por IP ou token
-        client_ip = request.client.host if request.client else "unknown_ip"
+        client_ip = self._extract_client_ip(request)
         key = f"rate_limit:{self.prefix}:{client_ip}"
 
         try:
             r = self._get_client()
-            # Pipeline atomico de incremento e expiracao
             pipe = r.pipeline()
             pipe.incr(key)
-            pipe.expire(key, self.seconds)
+            pipe.expire(key, self.seconds, nx=True)
             current_requests, _ = pipe.execute()
 
             if current_requests > self.times:
-                logger.warning("Limite de taxa excedido para IP %s no endpoint %s (%d/%d)", client_ip, request.url.path, current_requests, self.times)
+                logger.warning(
+                    "Limite de taxa excedido para IP %s no endpoint %s (%d/%d)",
+                    client_ip, request.url.path, current_requests, self.times
+                )
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail=f"Limite de requisicoes excedido ({self.times} reqs por {self.seconds}s). Tente novamente mais tarde.",
@@ -54,6 +66,5 @@ class RateLimiter:
         except HTTPException:
             raise
         except (redis.ConnectionError, redis.TimeoutError, redis.RedisError, ConnectionError, OSError) as e:
-            # Resiliencia Fail-Open: loga a indisponibilidade sem interromper a API
             logger.debug("Redis inacessivel para rate limiting (%s). Prosseguindo em modo fail-open.", e)
             return True

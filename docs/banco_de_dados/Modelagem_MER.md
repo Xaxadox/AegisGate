@@ -14,7 +14,7 @@ erDiagram
         string status "Aprovado, Em Revisão, Bloqueado"
         int risk_score
         json reasons "Array de justificativas"
-        json metadata "IP, Geoloc, Timestamps"
+        json metadata_info "IP, Geoloc, Timestamps"
         datetime created_at
     }
     
@@ -42,7 +42,7 @@ CREATE TABLE transactions (
     status ENUM('Aprovado', 'Em Revisão', 'Bloqueado') NOT NULL,
     risk_score INT NOT NULL,
     reasons JSON,
-    metadata JSON,
+    metadata_info JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

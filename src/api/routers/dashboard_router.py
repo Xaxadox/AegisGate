@@ -3,7 +3,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
+from src.core.config import settings
 from src.core.database import get_db
+from src.core.rate_limiter import RateLimiter
 from src.models.schemas import (
     DashboardMetricsResponse,
     DashboardTransactionListResponse,
@@ -19,6 +21,8 @@ router = APIRouter(
     prefix="/api/v1/dashboard",
     tags=["Dashboard & Backoffice"]
 )
+
+dashboard_write_limiter = RateLimiter(times=30, seconds=60, prefix="dashboard_write")
 
 
 @router.get(
@@ -70,7 +74,8 @@ def list_dashboard_transactions(
     "/transactions/{transaction_id}/review",
     response_model=DashboardReviewResponse,
     status_code=status.HTTP_200_OK,
-    summary="Deliberação manual do analista sobre transação em revisão"
+    summary="Deliberação manual do analista sobre transação em revisão",
+    dependencies=[Depends(dashboard_write_limiter)]
 )
 def review_transaction(
     transaction_id: str,
@@ -103,7 +108,8 @@ def review_transaction(
 @router.post(
     "/simulate",
     status_code=status.HTTP_200_OK,
-    summary="Simulador de checkout interativo para demonstração em tempo real"
+    summary="Simulador de checkout interativo para demonstração em tempo real",
+    dependencies=[Depends(dashboard_write_limiter)]
 )
 def simulate_checkout(
     payload: DashboardSimulateRequest,
@@ -126,13 +132,20 @@ def simulate_checkout(
 @router.post(
     "/reset",
     status_code=status.HTTP_200_OK,
-    summary="Zerar transações de teste e reiniciar métricas do dashboard"
+    summary="Zerar transações de teste e reiniciar métricas do dashboard",
+    dependencies=[Depends(dashboard_write_limiter)]
 )
 def reset_test_data(db: Session = Depends(get_db)):
     """
     Remove todas as transações e registros de auditoria do banco de homologação/teste,
     permitindo reiniciar o RiskBoard com métricas zeradas para novas simulações e apresentações.
     """
+    if settings.ENVIRONMENT.lower() == "production":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operação de reset de banco bloqueada em ambiente de produção."
+        )
+
     try:
         service = DashboardService(db)
         deleted = service.reset_database()

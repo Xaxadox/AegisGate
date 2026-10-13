@@ -1,7 +1,7 @@
 import os
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Tuple, List, Optional, Any
 
 import joblib
@@ -35,6 +35,7 @@ class FraudAIEngine:
 
     def __init__(self, model_path: Optional[str] = None):
         self.geoip_db_path = settings.GEOIP_DB_PATH
+        self._geoip_reader: Optional[Any] = None
         self.model: Optional[Any] = None
         self.is_ready = False
 
@@ -51,6 +52,17 @@ class FraudAIEngine:
                 self.model_path = (project_root / configured_path).resolve()
 
         self._load_model()
+        self._init_geoip_reader()
+
+    def _init_geoip_reader(self) -> None:
+        """Inicializa e mantem em memoria o leitor de base GeoIP2."""
+        if os.path.exists(self.geoip_db_path):
+            try:
+                import geoip2.database
+                self._geoip_reader = geoip2.database.Reader(self.geoip_db_path)
+            except Exception as e:
+                logger.warning("Nao foi possivel inicializar Reader GeoIP2 em '%s': %s", self.geoip_db_path, e)
+                self._geoip_reader = None
 
     def _load_model(self) -> None:
         """
@@ -92,30 +104,37 @@ class FraudAIEngine:
 
     def _check_geoip(self, ip: str, uf_delivery: str) -> Tuple[int, List[str]]:
         """
-        Consulta opcional e resiliente a base MaxMind GeoIP2.
+        Consulta opcional e resiliente a base MaxMind GeoIP2 reutilizando o Reader aberto.
         Se a base local (.mmdb) existir, cruza o estado do IP com o estado de entrega.
         Se a base nao existir, faz bypass seguro sem degradar o fluxo.
         """
         score_diff = 0
-        reasons = []
+        reasons: List[str] = []
 
-        if not os.path.exists(self.geoip_db_path):
+        if self._geoip_reader is None and os.path.exists(self.geoip_db_path):
+            self._init_geoip_reader()
+
+        if self._geoip_reader is None:
             return score_diff, reasons
 
         try:
-            import geoip2.database
-            with geoip2.database.Reader(self.geoip_db_path) as reader:
-                response = reader.city(ip)
-                subdivisions = response.subdivisions
-                if subdivisions:
-                    ip_state = subdivisions[0].iso_code
-                    if ip_state and ip_state.upper() != uf_delivery.upper():
-                        score_diff += 30
-                        reasons.append("GEO_STATE_MISMATCH")
+            response = self._geoip_reader.city(ip)
+            subdivisions = response.subdivisions
+            if subdivisions:
+                ip_state = subdivisions[0].iso_code
+                if ip_state and ip_state.upper() != uf_delivery.upper():
+                    score_diff += 30
+                    reasons.append("GEO_STATE_MISMATCH")
         except Exception as e:
             logger.debug("GeoIP lookup falhou para IP %s: %s", ip, e)
 
         return score_diff, reasons
+
+    @staticmethod
+    def _ensure_utc(dt: datetime) -> datetime:
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
 
     @ai_breaker
     def evaluate_risk(
@@ -139,7 +158,9 @@ class FraudAIEngine:
         # ---------------------------------------------------------
         # 1. Extracao de Features & Explicabilidade Semantica (LGPD)
         # ---------------------------------------------------------
-        time_diff = (submitted_at - started_at).total_seconds()
+        started_utc = self._ensure_utc(started_at)
+        submitted_utc = self._ensure_utc(submitted_at)
+        time_diff = (submitted_utc - started_utc).total_seconds()
 
         # Feature 1: Velocidade do Checkout (Bots e Inconsistencias Temporais)
         if time_diff < 0:
@@ -173,18 +194,14 @@ class FraudAIEngine:
         # ---------------------------------------------------------
         ml_score: int = 10
         if self.model is not None and self.is_ready:
-            try:
-                geo_flag = 1 if len(geo_reasons) > 0 else 0
-                pasted_flag = 1 if is_pasted else 0
-                clamped_duration = max(0.0, min(time_diff, 7200.0))
+            geo_flag = 1 if len(geo_reasons) > 0 else 0
+            pasted_flag = 1 if is_pasted else 0
+            clamped_duration = max(0.0, min(time_diff, 7200.0))
 
-                feature_vector = np.array([[amount, clamped_duration, pasted_flag, geo_flag]], dtype=float)
-                probabilities = self.model.predict_proba(feature_vector)
-                fraud_prob = float(probabilities[0][1])
-                ml_score = int(round(fraud_prob * 100))
-            except Exception as e:
-                logger.warning("Falha na inferencia estatistica de ML: %s. Utilizando heuristica.", e)
-                ml_score = min(10 + rule_penalty, 100)
+            feature_vector = np.array([[amount, clamped_duration, pasted_flag, geo_flag]], dtype=float)
+            probabilities = self.model.predict_proba(feature_vector)
+            fraud_prob = float(probabilities[0][1])
+            ml_score = int(round(fraud_prob * 100))
         else:
             # Fallback heuristico transparente se o modelo nao estiver disponivel
             ml_score = min(10 + rule_penalty, 100)
